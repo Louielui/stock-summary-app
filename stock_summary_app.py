@@ -1,3 +1,4 @@
+
 import streamlit as st
 import datetime
 import yfinance as yf
@@ -59,7 +60,7 @@ if symbol:
         ax2.set_title("RSI 指標")
         st.pyplot(fig2)
 
-        # MACD 計算與圖表
+        # MACD 圖
         exp12 = data['Close'].ewm(span=12, adjust=False).mean()
         exp26 = data['Close'].ewm(span=26, adjust=False).mean()
         macd_line = exp12 - exp26
@@ -111,7 +112,7 @@ if symbol:
                 "履約日": exp_date.strftime("%Y-%m-%d"),
                 "履約價": f"${strike_price}",
                 "權利金": f"${premium}",
-                "總收入({put_lots}口)": f"${total_income:.0f}",
+                f"總收入({put_lots}口)": f"${total_income:.0f}",
                 "保證金需求": f"${capital_req:,.0f}",
                 "報酬率": f"{return_rate:.2f}%"
             })
@@ -122,19 +123,65 @@ if symbol:
         st.header("[ AI 建議 ]")
 
         ai_comment = ""
+        summary_score = 0
+
         if rsi > 70:
-            ai_comment += f"{symbol} 處於超買區，短線可能面臨壓力，建議觀望或設好停利點。\n"
+            ai_comment += f"🔺 RSI > 70：{symbol} 處於超買區，可能出現拉回修正，建議保守觀望或分批停利。
+"
+            summary_score -= 1
         elif rsi < 30:
-            ai_comment += f"{symbol} 處於超賣區，可能有反彈空間，Put Sell 策略可逐步佈局。\n"
+            ai_comment += f"🔻 RSI < 30：{symbol} 處於超賣區，技術面可能反彈，Put Sell 策略具吸引力。
+"
+            summary_score += 1
         else:
-            ai_comment += f"{symbol} RSI 中性 ({rsi:.1f})，整體偏多，觀察是否回測 MA20 (${ma20:.2f})。\n"
+            ai_comment += f"➤ RSI 在中性區 ({rsi:.1f})，觀察是否轉強或失守 MA20 (${ma20:.2f})。
+"
+
+        macd_diff = macd_line.iloc[-1] - signal_line.iloc[-1]
+        if macd_diff > 0 and macd_line.iloc[-1] > 0:
+            ai_comment += "✅ MACD 處於多頭排列，趨勢偏多。
+"
+            summary_score += 1
+        elif macd_diff < 0 and macd_line.iloc[-1] < 0:
+            ai_comment += "⚠️ MACD 處於空頭排列，建議保守操作。
+"
+            summary_score -= 1
+        else:
+            ai_comment += "🔄 MACD 處於轉折點附近，需觀察方向明朗化。
+"
+
+        k_val = k_line.iloc[-1]
+        d_val = d_line.iloc[-1]
+        if k_val > 80 and d_val > 80:
+            ai_comment += "🔺 KD 高檔鈍化，短線漲多須防回落。
+"
+            summary_score -= 1
+        elif k_val < 20 and d_val < 20:
+            ai_comment += "🔻 KD 低檔鈍化，可能進入反彈階段，可考慮進場。
+"
+            summary_score += 1
+        else:
+            ai_comment += f"➤ KD 中性 (K={k_val:.1f}, D={d_val:.1f})，等待轉折明確訊號。
+"
 
         if current > ma20:
-            ai_comment += "目前價格在 MA20 之上，顯示多頭格局。"
+            ai_comment += "📈 價格站上 MA20，技術面維持偏多格局。
+"
+            summary_score += 1
         else:
-            ai_comment += "目前價格低於 MA20，建議保守操作或等待企穩。"
+            ai_comment += "📉 價格低於 MA20，短線弱勢，建議保守。
+"
+            summary_score -= 1
 
         st.info(ai_comment)
+
+        st.subheader("策略等級判斷：")
+        if summary_score >= 2:
+            st.success("✅ 綜合建議：積極建倉（偏多）")
+        elif summary_score <= -2:
+            st.error("⚠️ 綜合建議：保守觀望（偏空）")
+        else:
+            st.warning("➤ 綜合建議：中性偏觀望，留意轉折")
 
     except Exception as e:
         st.error("無法取得股票資料，請確認代碼正確。")
