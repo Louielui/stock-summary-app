@@ -59,6 +59,36 @@ if symbol:
         ax2.set_title("RSI 指標")
         st.pyplot(fig2)
 
+        # MACD 計算與圖表
+        exp12 = data['Close'].ewm(span=12, adjust=False).mean()
+        exp26 = data['Close'].ewm(span=26, adjust=False).mean()
+        macd_line = exp12 - exp26
+        signal_line = macd_line.ewm(span=9, adjust=False).mean()
+
+        fig3, ax3 = plt.subplots(figsize=(10, 2))
+        ax3.plot(macd_line, label='MACD', color='blue')
+        ax3.plot(signal_line, label='Signal', color='red', linestyle='--')
+        ax3.axhline(0, color='gray', linestyle=':')
+        ax3.set_title("MACD 指標")
+        ax3.legend()
+        st.pyplot(fig3)
+
+        # KD 指標
+        low_min = data['Low'].rolling(window=9).min()
+        high_max = data['High'].rolling(window=9).max()
+        rsv = (data['Close'] - low_min) / (high_max - low_min) * 100
+        k_line = rsv.ewm(com=2).mean()
+        d_line = k_line.ewm(com=2).mean()
+
+        fig4, ax4 = plt.subplots(figsize=(10, 2))
+        ax4.plot(k_line, label='K', color='green')
+        ax4.plot(d_line, label='D', color='purple')
+        ax4.axhline(80, color='red', linestyle='--')
+        ax4.axhline(20, color='blue', linestyle='--')
+        ax4.set_title("KD 指標")
+        ax4.legend()
+        st.pyplot(fig4)
+
         rsi = rsi_series.iloc[-1]
         ma20 = ma20_series.iloc[-1]
         macd_trend = "多方趨勢" if current > ma20 else "盤整/偏空"
@@ -72,7 +102,7 @@ if symbol:
         today_str = datetime.date.today().strftime("%Y-%m-%d")
         for pct in [0.95, 0.975, 1.0, 1.025]:
             strike_price = round(current * pct, 2)
-            premium = round(1.0 + (1.05 - pct) * 3.5, 2)  # 模擬權利金
+            premium = round(1.0 + (1.05 - pct) * 3.5, 2)
             capital_req = strike_price * 100 * put_lots * 0.8
             total_income = premium * 100 * put_lots
             return_rate = total_income / capital_req * 100
