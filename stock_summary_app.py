@@ -185,3 +185,4 @@ if symbol:
 
     except Exception as e:
         st.error("無法取得股票資料，請確認代碼正確。")
+
